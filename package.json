@@ -1,0 +1,40 @@
+{
+  "name": "nestjs-stack-parser",
+  "version": "1.0.0",
+  "description": "A simple and typed parser to extract meaningful data from NestJS-style stack traces.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "nestjs",
+    "stack",
+    "parser",
+    "typescript",
+    "error-handling",
+    "stacktrace"
+  ],
+  "author": "LEROY Nicolas",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nikolas03/nestjs-stack-parser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nikolas03/nestjs-stack-parser/issues"
+  },
+  "homepage": "https://github.com/nikolas03/nestjs-stack-parser/#readme",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
