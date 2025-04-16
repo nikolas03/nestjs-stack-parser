@@ -105,5 +105,5 @@ MIT © Nicolas LEROY
 
 ## 🌐 Links
 
-- GitHub: [github.com/leroynico/nestjs-stack-parser](https://github.com/leroynico/nestjs-stack-parser)
+- GitHub: [github.com/nikolas03/nestjs-stack-parser](https://github.com/nikolas03/nestjs-stack-parser)
 - NPM: [npmjs.com/package/nestjs-stack-parser](https://www.npmjs.com/package/nestjs-stack-parser)
