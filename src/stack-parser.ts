@@ -1,56 +1,116 @@
 import { ParsedStack, StackFrame } from "./interfaces";
 
+/**
+ * Options for parsing stack traces
+ */
+export interface ParseOptions {
+  /** Exclude stack frames from node_modules directory */
+  excludeNodeModules?: boolean;
+  /** Exclude internal Node.js stack frames */
+  excludeInternal?: boolean;
+  /** Maximum number of stack frames to return */
+  maxFrames?: number;
+}
+
+/**
+ * Parses a JavaScript/TypeScript stack trace string into a structured object.
+ *
+ * @param stack - The raw stack trace string (typically from error.stack)
+ * @param options - Configuration options for parsing
+ * @returns A structured ParsedStack object, or undefined if the stack is invalid
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   throw new Error('Something went wrong');
+ * } catch (err) {
+ *   const parsed = parseStack(err.stack, { excludeNodeModules: true });
+ *   console.log(parsed);
+ * }
+ * ```
+ */
 export function parseStack(
   stack?: string,
-  options?: { excludeNodeModules?: boolean }
+  options?: ParseOptions
 ): ParsedStack | undefined {
-  if (!stack) return;
+  if (!stack || stack.trim() === "") return;
 
-  const [firstLine, ...rest] = stack.split("\n");
-  const match = firstLine.match(/^([^:]+):\s*(.+)/);
+  const lines = stack.split("\n");
+  const firstLine = lines[0];
 
-  const errorType = match?.[1];
-  const error = match?.[2];
+  // Parse error type and message from first line
+  // Handle cases where the error message contains colons
+  const colonIndex = firstLine.indexOf(":");
+  const errorType = colonIndex > -1 ? firstLine.slice(0, colonIndex).trim() : undefined;
+  const error = colonIndex > -1 ? firstLine.slice(colonIndex + 1).trim() : undefined;
 
+  // Improved regex to handle:
+  // - async functions: "at async ClassName.method"
+  // - absolute paths: Unix (/path) and Windows (C:\path)
+  // - relative paths: (./path or ../path)
+  // - anonymous functions
   const stackRegex =
-    /at\s+(?:(.*?)\s+\()?((?:\/|[a-zA-Z]:\\).+?):(\d+):(\d+)\)?/;
+    /at\s+(?:async\s+)?(?:(.*?)\s+\()?((?:\/|[a-zA-Z]:[\\\/]|\.[\\\/]).+?):(\d+):(\d+)\)?/;
 
-  const stackFrames: StackFrame[] = rest
-    .flatMap((line) => {
-      const match = line.match(stackRegex);
-      if (!match) return [];
+  const stackFrames: StackFrame[] = [];
 
-      const fullFunctionName = match[1]?.trim() || null;
-      let className: string | null = null;
-      let methodName: string;
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(stackRegex);
 
-      if (fullFunctionName && fullFunctionName.includes(".")) {
-        const parts = fullFunctionName.split(".");
-        className = parts[0];
-        methodName = parts.slice(1).join(".");
-      } else if (!fullFunctionName) {
-        methodName = "<anonymous>";
-      } else {
-        methodName = fullFunctionName;
-      }
+    if (!match) continue;
 
-      return [
-        {
-          at: fullFunctionName,
-          className,
-          methodName,
-          file: match[2],
-          line: Number(match[3]),
-          column: Number(match[4]),
-        },
-      ];
-    })
-    .filter((frame) => {
-      if (!frame) return false;
-      if (options?.excludeNodeModules && frame.file.includes("node_modules")) {
-        return false;
-      }
-      return true;
+    const fullFunctionName = match[1]?.trim() || null;
+    const filePath = match[2];
+
+    // Apply filters
+    if (options?.excludeNodeModules && filePath.includes("node_modules")) {
+      continue;
+    }
+
+    if (options?.excludeInternal && isInternalNodeModule(filePath)) {
+      continue;
+    }
+
+    // Parse class and method names
+    let className: string | null = null;
+    let methodName: string;
+
+    if (fullFunctionName && fullFunctionName.includes(".")) {
+      const parts = fullFunctionName.split(".");
+      className = parts[0];
+      methodName = parts.slice(1).join(".");
+    } else if (!fullFunctionName) {
+      methodName = "<anonymous>";
+    } else {
+      methodName = fullFunctionName;
+    }
+
+    stackFrames.push({
+      at: fullFunctionName,
+      className,
+      methodName,
+      file: filePath,
+      line: Number(match[3]),
+      column: Number(match[4]),
     });
+
+    // Apply maxFrames limit
+    if (options?.maxFrames && stackFrames.length >= options.maxFrames) {
+      break;
+    }
+  }
+
   return { type: errorType, error, stack: stackFrames };
+}
+
+/**
+ * Checks if a file path belongs to Node.js internal modules
+ */
+function isInternalNodeModule(filePath: string): boolean {
+  return (
+    filePath.startsWith("node:") ||
+    filePath.startsWith("internal/") ||
+    (filePath.includes("(") && filePath.includes(")") && !filePath.includes("/"))
+  );
 }

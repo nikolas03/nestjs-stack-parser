@@ -17,12 +17,23 @@ npm install nestjs-stack-parser
 `nestjs-stack-parser` helps you convert raw stack traces—like those from NestJS or plain JavaScript errors—into structured objects. It parses:
 
 - The error **type** (e.g., `TypeError`, `ForbiddenException`)
-- The **error message**
+- The **error message** (including messages with colons)
 - The full **stack trace**, broken down into:
   - Class name (if present)
   - Method name
-  - File path
+  - File path (absolute, relative, Windows, Unix)
   - Line and column numbers
+
+### Supported Stack Trace Formats
+
+- ✅ Standard synchronous calls
+- ✅ Async/await function calls
+- ✅ Anonymous functions
+- ✅ Nested method names (e.g., `Object.prototype.toString`)
+- ✅ Unix absolute paths (`/app/src/file.ts`)
+- ✅ Windows paths (`C:\Users\app\src\file.ts`)
+- ✅ Relative paths (`./src/file.ts`, `../utils/helper.ts`)
+- ✅ NestJS exception formats
 
 ---
 
@@ -34,7 +45,11 @@ import { parseStack } from "nestjs-stack-parser";
 try {
   // some code that throws
 } catch (err) {
-  const parsed = parseStack(err.stack, { excludeNodeModules: true });
+  const parsed = parseStack(err.stack, {
+    excludeNodeModules: true,
+    excludeInternal: true,
+    maxFrames: 10
+  });
   console.log(parsed);
 }
 ```
@@ -68,6 +83,18 @@ try {
 - Type: `boolean`
 - Default: `false`
 - If `true`, stack frames from `node_modules` will be excluded.
+
+### `excludeInternal`
+
+- Type: `boolean`
+- Default: `false`
+- If `true`, internal Node.js stack frames (like `node:internal/...`) will be excluded.
+
+### `maxFrames`
+
+- Type: `number`
+- Default: `undefined` (no limit)
+- Limits the number of stack frames returned. Useful for reducing output size.
 
 ---
 
